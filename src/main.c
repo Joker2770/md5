@@ -7,12 +7,12 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "md5.h"
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <string.h>
+#include "md5.h"
 
 #define MAX_BUF_LEN (1024 * 1024 * 1024)
 
@@ -48,13 +48,12 @@ int calc_md5_f(const char *filename, size_t f_size, char *dest)
 {
     int i = 0;
     int filelen = 0;
-    int read_len;
+    int read_len = 0;
     char temp[8] = {0};
     char *buf = NULL;
     buf = (char*)malloc(sizeof(char) * f_size);
     unsigned char decrypt[16] = {0};
     MD5_CTX md5;
-    char fw_path[128];
 
     int fdf;
 
