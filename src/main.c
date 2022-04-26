@@ -140,7 +140,7 @@ int main(int argc, char *argv[])
             if (strlen(szDest) > 0 && iLen > 0)
                 printf("md5: %s\n", szDest);
             else
-                printf("inernal error!\n");
+                printf("internal error!\n");
         }
         else if (0 == strcmp(argv[1], "-f"))
         {
@@ -148,7 +148,7 @@ int main(int argc, char *argv[])
             if (strlen(szDest) > 0 && iLen > 0)
                 printf("md5: %s\n", szDest);
             else
-                printf("inernal error!\n");
+                printf("internal error!\n");
         }
         else
         {
