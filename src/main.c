@@ -33,7 +33,7 @@
 #include <string.h>
 #include "md5.h"
 
-#define MAX_BUF_LEN (1024 * 1024 * 1024)
+#define MAX_BUF_LEN (1024 * 1024)
 
 int calc_md5_s(const char *src, char *dest)
 {
@@ -86,6 +86,7 @@ int calc_md5_f(const char *filename, size_t f_size, char *dest)
     MD5Init(&md5);
     while (1)
     {
+        memset(buf, 0, sizeof(buf));
         read_len = read(fdf, buf, sizeof(buf));
         if (read_len < 0)
         {
@@ -139,7 +140,7 @@ int main(int argc, char *argv[])
             iLen = calc_md5_s(argv[2], szDest);
             if (strlen(szDest) > 0 && iLen > 0)
                 printf("md5: %s\n", szDest);
-            else
+            else if (strlen(szDest) <= 0)
                 printf("internal error!\n");
         }
         else if (0 == strcmp(argv[1], "-f"))
@@ -147,7 +148,7 @@ int main(int argc, char *argv[])
             iLen = calc_md5_f(argv[2], MAX_BUF_LEN, szDest);
             if (strlen(szDest) > 0 && iLen > 0)
                 printf("md5: %s\n", szDest);
-            else
+            else if (strlen(szDest) <= 0)
                 printf("internal error!\n");
         }
         else
