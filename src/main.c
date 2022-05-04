@@ -31,6 +31,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <string.h>
+#include <time.h>
 #include "md5.h"
 
 #define MAX_BUF_LEN (1024 * 1024)
@@ -104,7 +105,11 @@ int calc_md5_f(const char *filename, size_t f_size, char *dest)
         }
         filelen += read_len;
         MD5Update(&md5, (unsigned char *)buf, read_len);
+
+        printf("TIME USED = %6.2f MINUTES\r", (double)clock() / CLOCKS_PER_SEC / 60);
+        fflush(stdout);
     }
+    printf("\n");
 
     MD5Final(&md5, decrypt);
 
