@@ -36,6 +36,22 @@
 
 #define MAX_BUF_LEN (1024 * 1024)
 
+size_t f_size(FILE *fp)
+{
+    size_t n;
+    fpos_t fpos;
+
+    if (fp == NULL)
+        return -1;
+
+    fgetpos(fp, &fpos); //获取当前位置
+    fseek(fp, 0, SEEK_END);
+    n = ftell(fp);
+    fsetpos(fp, &fpos); //恢复之前的位置
+
+    return n;
+}
+
 int calc_md5_s(const char *src, char *dest)
 {
     int read_len = 0;
@@ -64,18 +80,19 @@ int calc_md5_s(const char *src, char *dest)
     return read_len;
 }
 
-int calc_md5_f(const char *filename, size_t f_size, char *dest)
+int calc_md5_f(const char *filename, size_t bf_size, char *dest)
 {
     int i = 0;
-    int filelen = 0;
+    size_t filelen = 0;
     int read_len = 0;
     char temp[8] = {0};
     char *buf = NULL;
-    buf = (char*)malloc(sizeof(char) * f_size);
+    buf = (char*)malloc(sizeof(char) * bf_size);
     unsigned char decrypt[16] = {0};
     MD5_CTX md5;
 
-    int fdf;
+    int fdf = -1;
+    size_t lfsize = 0;
 
     fdf = open(filename, O_RDWR);
     if (fdf < 0)
@@ -83,6 +100,15 @@ int calc_md5_f(const char *filename, size_t f_size, char *dest)
         printf("%s not exist\n", filename);
         return -1;
     }
+
+    lfsize = f_size(fopen(filename, "rb"));
+    if (lfsize <= 0)
+    {
+        printf("Failed to count file size!\n");
+        return -2;
+    }
+    else
+        printf("file size: %lu bytes\n", lfsize);
 
     MD5Init(&md5);
     while (1)
@@ -106,7 +132,7 @@ int calc_md5_f(const char *filename, size_t f_size, char *dest)
         filelen += read_len;
         MD5Update(&md5, (unsigned char *)buf, read_len);
 
-        printf("TIME USED = %6.2f MINUTES\r", (double)clock() / CLOCKS_PER_SEC / 60);
+        printf("[TIME USED = %6.2f MINUTES] [%ld%%]\r", (double)clock() / CLOCKS_PER_SEC / 60, filelen * 100 / lfsize);
         fflush(stdout);
     }
     printf("\n");
