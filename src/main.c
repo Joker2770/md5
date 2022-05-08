@@ -90,9 +90,9 @@ int calc_md5_f(const char *filename, size_t bf_size, char *dest)
     buf = (char*)malloc(sizeof(char) * bf_size);
     unsigned char decrypt[16] = {0};
     MD5_CTX md5;
-
     int fdf = -1;
     size_t lfsize = 0;
+    FILE *fp = NULL;
 
     fdf = open(filename, O_RDWR);
     if (fdf < 0)
@@ -101,7 +101,8 @@ int calc_md5_f(const char *filename, size_t bf_size, char *dest)
         return -1;
     }
 
-    lfsize = f_size(fopen(filename, "rb"));
+    fp = fopen(filename, "rb");
+    lfsize = f_size(fp);
     if (lfsize <= 0)
     {
         printf("Failed to count file size!\n");
@@ -109,6 +110,9 @@ int calc_md5_f(const char *filename, size_t bf_size, char *dest)
     }
     else
         printf("file size: %lu bytes\n", lfsize);
+
+    if (NULL != fp)
+        fclose(fp);
 
     MD5Init(&md5);
     while (1)
@@ -126,9 +130,8 @@ int calc_md5_f(const char *filename, size_t bf_size, char *dest)
             return -1;
         }
         if (read_len == 0)
-        {
             break;
-        }
+
         filelen += read_len;
         MD5Update(&md5, (unsigned char *)buf, read_len);
 
