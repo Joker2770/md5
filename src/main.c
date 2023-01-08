@@ -97,7 +97,6 @@ int calc_md5_f(const char *filename, size_t bf_size, char *dest)
     MD5_CTX md5;
     size_t lfsize = 0;
     FILE *fdf = NULL;
-    FILE *fp = NULL;
 
     fdf = fopen(filename, "rb");
     if (NULL == fdf)
@@ -111,11 +110,11 @@ int calc_md5_f(const char *filename, size_t bf_size, char *dest)
         return -1;
     }
 
-    fp = fopen(filename, "rb");
-    lfsize = f_size(fp);
+    lfsize = f_size(fdf);
     if (lfsize <= 0)
     {
         printf("Failed to count file size!\n");
+        fclose(fdf);
         if (NULL != buf)
         {
             free(buf);
@@ -125,9 +124,6 @@ int calc_md5_f(const char *filename, size_t bf_size, char *dest)
     }
     else
         printf("file size: %zu bytes\n", lfsize);
-
-    if (NULL != fp)
-        fclose(fp);
 
     MD5Init(&md5);
     while (1)
