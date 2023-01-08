@@ -7,7 +7,7 @@
 
 /*
     A simple tool for calculating MD5. 
-    Copyright (C) 2022  joker2770
+    Copyright (C) 2022-2023  joker2770
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -24,15 +24,21 @@
     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 */
 
+#include "md5.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <time.h>
+
+#ifdef __linux
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <string.h>
-#include <time.h>
-#include "md5.h"
+#endif // __linux
+#ifdef _MSC_VER
+#include <windows.h>
+#endif //_MSC_VER
 
 #define MAX_BUF_LEN (1024 * 1024)
 
@@ -44,10 +50,10 @@ size_t f_size(FILE *fp)
     if (fp == NULL)
         return -1;
 
-    fgetpos(fp, &fpos); //获取当前位置
+    fgetpos(fp, &fpos);
     fseek(fp, 0, SEEK_END);
     n = ftell(fp);
-    fsetpos(fp, &fpos); //恢复之前的位置
+    fsetpos(fp, &fpos);
 
     return n;
 }
@@ -58,13 +64,12 @@ int calc_md5_s(const char *src, char *dest)
     int i = 0;
     char temp[8] = {0};
     unsigned char decrypt[16] = {0};
-
     MD5_CTX md5c;
 
-    MD5Init(&md5c); //初始化
     read_len = strlen(src);
-    MD5Update(&md5c, (unsigned char *)src, read_len);
 
+    MD5Init(&md5c);
+    MD5Update(&md5c, (unsigned char *)src, read_len);
     MD5Final(&md5c, decrypt);
 
     for (i = 0; i < 16; i++)
@@ -84,20 +89,25 @@ int calc_md5_f(const char *filename, size_t bf_size, char *dest)
 {
     int i = 0;
     size_t filelen = 0;
-    int read_len = 0;
+    size_t read_len = 0;
     char temp[8] = {0};
-    char *buf = NULL;
-    buf = (char*)malloc(sizeof(char) * bf_size);
+    unsigned char *buf = NULL;
+    buf = (unsigned char*)malloc(sizeof(unsigned char) * bf_size);
     unsigned char decrypt[16] = {0};
     MD5_CTX md5;
-    int fdf = -1;
     size_t lfsize = 0;
+    FILE *fdf = NULL;
     FILE *fp = NULL;
 
-    fdf = open(filename, O_RDWR);
-    if (fdf < 0)
+    fdf = fopen(filename, "rb");
+    if (NULL == fdf)
     {
         printf("%s not exist\n", filename);
+        if (NULL != buf)
+        {
+            free(buf);
+            buf = NULL;
+        }
         return -1;
     }
 
@@ -106,10 +116,15 @@ int calc_md5_f(const char *filename, size_t bf_size, char *dest)
     if (lfsize <= 0)
     {
         printf("Failed to count file size!\n");
+        if (NULL != buf)
+        {
+            free(buf);
+            buf = NULL;
+        }
         return -2;
     }
     else
-        printf("file size: %lu bytes\n", lfsize);
+        printf("file size: %zu bytes\n", lfsize);
 
     if (NULL != fp)
         fclose(fp);
@@ -117,11 +132,11 @@ int calc_md5_f(const char *filename, size_t bf_size, char *dest)
     MD5Init(&md5);
     while (1)
     {
-        memset(buf, 0, sizeof(buf));
-        read_len = read(fdf, buf, sizeof(buf));
+        memset(buf, 0, sizeof(unsigned char) * bf_size);
+        read_len = fread(buf, sizeof(unsigned char), sizeof(unsigned char) * bf_size, fdf);
         if (read_len < 0)
         {
-            close(fdf);
+            fclose(fdf);
             if (NULL != buf)
             {
                 free(buf);
@@ -135,7 +150,7 @@ int calc_md5_f(const char *filename, size_t bf_size, char *dest)
         filelen += read_len;
         MD5Update(&md5, (unsigned char *)buf, read_len);
 
-        printf("[TIME USED = %6.2f MINUTES] [%ld%%]\r", (double)clock() / CLOCKS_PER_SEC / 60, filelen * 100 / lfsize);
+        printf("[TIME USED = %6.2f MINUTES] [%zu%%]\r", (double)clock() / CLOCKS_PER_SEC / 60, filelen * 100 / lfsize);
         fflush(stdout);
     }
     printf("\n");
@@ -152,7 +167,7 @@ int calc_md5_f(const char *filename, size_t bf_size, char *dest)
     }
 
     //printf("md5:%s len=%d\n", dest, filelen);
-    close(fdf);
+    fclose(fdf);
     if (NULL != buf)
     {
         free(buf);
@@ -199,7 +214,7 @@ int main(int argc, char *argv[])
     {
         printf(
             "A simple tool for calculating MD5. \n"
-            "Copyright (C) 2022  joker2770 \n"
+            "Copyright (C) 2022-2023  joker2770 \n"
             "\n"
             "This program is free software; you can redistribute it and/or modify \n"
             "it under the terms of the GNU General Public License as published by \n"
