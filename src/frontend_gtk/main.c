@@ -24,7 +24,7 @@
     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 */
 
-#include<stdio.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -43,6 +43,15 @@
 #include "md5.h"
 
 #define MAX_BUF_LEN (1024 * 1024)
+
+GtkTextBuffer *gtb;
+GtkWidget *btn_file_choose;
+GtkWidget *progress_bar = NULL;
+GtkWidget *toggle = NULL;
+GtkWidget *label;
+gchar g_text[1024 * 4 + 1] = "\0";
+gchar g_dest[32 + 1] = "\0";
+gdouble g_fraction = 0.0;
 
 size_t
 f_size(FILE *fp)
@@ -153,6 +162,8 @@ int calc_md5_f(const char *filename,
     MD5Update(&md5, (unsigned char *)buf, read_len);
 
     // printf("[TIME USED = %6.2f MINUTES] [%zu%%]\r", (double)clock() / CLOCKS_PER_SEC / 60, filelen * 100 / lfsize);
+    g_fraction = (double)filelen / (double)lfsize;
+
     fflush(stdout);
   }
   printf("\n");
@@ -179,6 +190,78 @@ int calc_md5_f(const char *filename,
   return filelen;
 }
 
+gboolean timeout_callback(gpointer data)
+{
+  if (NULL != data)
+  {
+    g_print("%f\n", g_fraction);
+    gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(data), g_fraction);
+  }
+  return g_fraction < 1.0;
+}
+
+void calc_file_thread(void *arg)
+{
+  memset(g_dest, 0, sizeof(g_dest));
+  calc_md5_f((const char *)arg, MAX_BUF_LEN, g_dest);
+  if (NULL != label)
+  {
+    gchar szMarkup[128] = "\0";
+    sprintf(szMarkup, "<span font_desc=\"14.0\" weight=\"bold\" color=\"blue\">%s</span>", g_dest);
+    gtk_label_set_markup(GTK_LABEL(label), szMarkup);
+  }
+}
+
+static void
+gtb_chg_callback(GtkWidget *widget, gpointer data)
+{
+  gchar *text = NULL;
+  GtkTextIter start, end;
+  gtk_text_buffer_get_bounds(GTK_TEXT_BUFFER(widget), &start, &end);
+
+  const GtkTextIter s = start, e = end;
+  text = gtk_text_buffer_get_text(GTK_TEXT_BUFFER(widget), &s, &e, TRUE);
+
+  g_print("text view(send):%s\n", text);
+
+  if (NULL != g_text && strlen(text) < (1024 * 4))
+  {
+    memset(g_text, 0, sizeof(g_text));
+    memcpy(g_text, (gchar *)text, strlen(text) * sizeof(gchar));
+  }
+  g_free(text);
+  text = NULL;
+}
+
+static void
+calc_md5(GtkWidget *widget,
+             gpointer data)
+{
+  gchar szDest[32 + 1] = "\0";
+  memset(szDest, 0, sizeof(szDest));
+  if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(toggle)))
+  {
+    gtk_widget_set_visible(progress_bar, TRUE);
+    gchar* szFileName = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(btn_file_choose));
+    if (NULL != szFileName)
+    {
+      g_thread_new(NULL, (GThreadFunc)calc_file_thread, (gpointer)szFileName);
+      g_timeout_add(100, (GSourceFunc)timeout_callback, (gpointer)progress_bar);
+    }
+  }
+  else
+  {
+    gtk_widget_set_visible(progress_bar, FALSE);
+    calc_md5_s(g_text, szDest);
+    if (NULL != data)
+    {
+      gchar szMarkup[128] = "\0";
+      sprintf(szMarkup, "<span font_desc=\"14.0\" weight=\"bold\" color=\"blue\">%s</span>", szDest);
+      gtk_label_set_markup(GTK_LABEL(data), szMarkup);
+    }
+  }
+}
+
 static void
 activate(GtkApplication *app,
          gpointer user_data)
@@ -189,12 +272,7 @@ activate(GtkApplication *app,
   GtkWidget *box;
   GtkWidget *text_view;
   GtkWidget *btn;
-  GtkWidget *btn_file_choose;
-  GtkWidget *toggle;
-  GtkWidget *progress_bar;
-  GtkWidget *label;
   GtkWidget *scrolled_window;
-  GtkTextBuffer *gtb;
 
   window = gtk_application_window_new(app);
   gtk_window_set_title(GTK_WINDOW(window), "md5_gtk");
@@ -209,6 +287,7 @@ activate(GtkApplication *app,
   gtk_box_set_homogeneous(GTK_BOX(box), TRUE);
 
   gtb = gtk_text_buffer_new(NULL);
+	g_signal_connect(gtb, "changed", G_CALLBACK(gtb_chg_callback), NULL);
 
   text_view = gtk_text_view_new();
   gtk_text_view_set_buffer(GTK_TEXT_VIEW(text_view), GTK_TEXT_BUFFER(gtb));
@@ -228,24 +307,25 @@ activate(GtkApplication *app,
   btn = gtk_button_new_with_label("calculate");
   gtk_widget_set_valign(btn, GTK_ALIGN_CENTER);
   gtk_box_pack_start(GTK_BOX(box), btn, FALSE, FALSE, 5);
-
   gtk_grid_attach(GTK_GRID(grid), box, 0, 1, 3, 1);
 
   progress_bar = gtk_progress_bar_new();
   gtk_progress_bar_set_show_text(GTK_PROGRESS_BAR(progress_bar), TRUE);
   gtk_progress_bar_set_pulse_step(GTK_PROGRESS_BAR(progress_bar), 0.10);
+  gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(progress_bar), 0.0);
   gtk_widget_set_sensitive(progress_bar, FALSE);
   gtk_widget_set_visible(progress_bar, FALSE);
   gtk_grid_attach(GTK_GRID(grid), progress_bar, 0, 2, 3, 1);
 
   label = gtk_label_new("                ");
-  gtk_label_set_markup(GTK_LABEL(label), "<span font_desc=\"14.0\" weight=\"bold\" color=\"blue\" background=\"#BBFFFF\">1234567890</span>");
   gtk_label_set_single_line_mode(GTK_LABEL(label), TRUE);
   gtk_label_set_selectable(GTK_LABEL(label), TRUE);
   gtk_grid_attach(GTK_GRID(grid), label, 0, 3, 3, 1);
 
   gtk_container_set_border_width(GTK_CONTAINER(window), 10);
   gtk_container_add(GTK_CONTAINER(window), grid);
+
+  g_signal_connect(btn, "clicked", G_CALLBACK(calc_md5), (gpointer)label);
 
   gtk_window_present(GTK_WINDOW(window));
   gtk_widget_show_all(window);
