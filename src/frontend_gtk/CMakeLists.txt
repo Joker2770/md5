@@ -20,7 +20,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../)
 include_directories (${GTK3_INCLUDE_DIRS})
 
 ## md5_gtk 
-file(GLOB MD5_GTK_SRCS "${CMAKE_CURRENT_SOURCE_DIR}/../md5.c" "${CMAKE_CURRENT_SOURCE_DIR}/../md5.h" "${CMAKE_CURRENT_SOURCE_DIR}/main.c")
+set(MD5_GTK_SRCS "${CMAKE_CURRENT_SOURCE_DIR}/../md5.c" "${CMAKE_CURRENT_SOURCE_DIR}/../md5.h" "${CMAKE_CURRENT_SOURCE_DIR}/main.c")
 add_executable(${PROJECT_NAME} ${MD5_GTK_SRCS})
 
 add_definitions (${GTK3_CFLAGS_OTHER})
