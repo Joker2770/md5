@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0.20230115
+Encoding=UTF-8
+Name=md5-console
+Comment=A simple Linux system resources monitor.
+Exec=md5-console.md5-gtk
+Terminal=false
+Type=Application
+Categories=Utility
+Icon=${SNAP}/meta/gui/md5-console.png
