@@ -44,11 +44,13 @@
 
 #define MAX_BUF_LEN (1024 * 1024)
 
-GtkTextBuffer *gtb;
-GtkWidget *btn_file_choose;
+GtkTextBuffer *gtb = NULL;
+GtkWidget *window = NULL;
+GtkWidget *btn = NULL;
+GtkWidget *btn_file_choose = NULL;
 GtkWidget *progress_bar = NULL;
 GtkWidget *toggle = NULL;
-GtkWidget *label;
+GtkWidget *label = NULL;
 gchar g_text[1024 * 4 + 1] = "\0";
 gchar g_dest[32 + 1] = "\0";
 gdouble g_fraction = 0.0;
@@ -190,6 +192,21 @@ int calc_md5_f(const char *filename,
   return filelen;
 }
 
+static void
+show_errMsg(const gchar* errMsg, gpointer data)
+{
+		GtkWidget *dialog = NULL;
+		dialog = gtk_message_dialog_new(GTK_WINDOW(data),
+					GTK_DIALOG_DESTROY_WITH_PARENT,
+					GTK_MESSAGE_ERROR,
+					GTK_BUTTONS_OK,
+					"%s",errMsg);
+		gtk_window_set_title(GTK_WINDOW(dialog), "Error");
+		gtk_widget_show_all (dialog);
+		gtk_dialog_run(GTK_DIALOG(dialog));
+		gtk_widget_destroy(dialog);
+}
+
 gboolean timeout_callback(gpointer data)
 {
   if (NULL != data)
@@ -202,6 +219,8 @@ gboolean timeout_callback(gpointer data)
 
 void calc_file_thread(void *arg)
 {
+  gtk_widget_set_sensitive(btn, FALSE);
+
   memset(g_dest, 0, sizeof(g_dest));
   calc_md5_f((const char *)arg, MAX_BUF_LEN, g_dest);
   if (NULL != label)
@@ -210,6 +229,8 @@ void calc_file_thread(void *arg)
     sprintf(szMarkup, "<span font_desc=\"14.0\" weight=\"bold\" color=\"blue\">%s</span>", g_dest);
     gtk_label_set_markup(GTK_LABEL(label), szMarkup);
   }
+
+  gtk_widget_set_sensitive(btn, TRUE);
 }
 
 static void
@@ -245,9 +266,17 @@ calc_md5(GtkWidget *widget,
     gchar* szFileName = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(btn_file_choose));
     if (NULL != szFileName)
     {
-      g_thread_new(NULL, (GThreadFunc)calc_file_thread, (gpointer)szFileName);
+      GThread *thread = NULL;
+      thread = g_thread_new(NULL, (GThreadFunc)calc_file_thread, (gpointer)szFileName);
       g_timeout_add(100, (GSourceFunc)timeout_callback, (gpointer)progress_bar);
+
+      if (NULL != thread)
+      {
+        g_thread_unref(thread);
+      }
     }
+    else
+      show_errMsg("Please choose a file first!", (gpointer)window);
   }
   else
   {
@@ -266,13 +295,11 @@ static void
 activate(GtkApplication *app,
          gpointer user_data)
 {
-  GtkWidget *window;
-  GtkWidget *content_area;
-  GtkWidget *grid;
-  GtkWidget *box;
-  GtkWidget *text_view;
-  GtkWidget *btn;
-  GtkWidget *scrolled_window;
+  GtkWidget *content_area = NULL;
+  GtkWidget *grid = NULL;
+  GtkWidget *box = NULL;
+  GtkWidget *text_view = NULL;
+  GtkWidget *scrolled_window = NULL;
 
   window = gtk_application_window_new(app);
   gtk_window_set_title(GTK_WINDOW(window), "md5_gtk");
@@ -311,8 +338,9 @@ activate(GtkApplication *app,
 
   progress_bar = gtk_progress_bar_new();
   gtk_progress_bar_set_show_text(GTK_PROGRESS_BAR(progress_bar), TRUE);
-  gtk_progress_bar_set_pulse_step(GTK_PROGRESS_BAR(progress_bar), 0.10);
-  gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(progress_bar), 0.0);
+  gtk_progress_bar_set_pulse_step(GTK_PROGRESS_BAR(progress_bar), 0.01);
+  gtk_progress_bar_pulse(GTK_PROGRESS_BAR(progress_bar));
+  gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(progress_bar), 1.0);
   gtk_widget_set_sensitive(progress_bar, FALSE);
   gtk_widget_set_visible(progress_bar, FALSE);
   gtk_grid_attach(GTK_GRID(grid), progress_bar, 0, 2, 3, 1);
