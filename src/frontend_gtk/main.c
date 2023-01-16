@@ -217,10 +217,8 @@ gboolean timeout_callback(gpointer data)
   return g_fraction < 1.0;
 }
 
-void calc_file_thread(void *arg)
+gboolean calc_file_thread(void *arg)
 {
-  gtk_widget_set_sensitive(btn, FALSE);
-
   memset(g_dest, 0, sizeof(g_dest));
   calc_md5_f((const char *)arg, MAX_BUF_LEN, g_dest);
   if (NULL != label)
@@ -231,6 +229,8 @@ void calc_file_thread(void *arg)
   }
 
   gtk_widget_set_sensitive(btn, TRUE);
+
+  return TRUE;
 }
 
 static void
@@ -263,6 +263,7 @@ calc_md5(GtkWidget *widget,
   if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(toggle)))
   {
     gtk_widget_set_visible(progress_bar, TRUE);
+    gtk_widget_set_sensitive(btn, FALSE);
     gchar* szFileName = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(btn_file_choose));
     if (NULL != szFileName)
     {
