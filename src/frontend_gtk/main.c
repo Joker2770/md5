@@ -262,11 +262,11 @@ calc_md5(GtkWidget *widget,
   memset(szDest, 0, sizeof(szDest));
   if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(toggle)))
   {
-    gtk_widget_set_visible(progress_bar, TRUE);
-    gtk_widget_set_sensitive(btn, FALSE);
     gchar* szFileName = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(btn_file_choose));
     if (NULL != szFileName)
     {
+      gtk_widget_set_visible(progress_bar, TRUE);
+      gtk_widget_set_sensitive(btn, FALSE);
       GThread *thread = NULL;
       thread = g_thread_new(NULL, (GThreadFunc)calc_file_thread, (gpointer)szFileName);
       g_timeout_add(100, (GSourceFunc)timeout_callback, (gpointer)progress_bar);
