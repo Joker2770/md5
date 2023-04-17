@@ -72,32 +72,29 @@ f_size(FILE *fp)
   return n;
 }
 
-int calc_md5_s(const char *src,
-               char *dest)
+int calc_md5_s(const char *src, unsigned int src_len,
+               char *dest, unsigned int dst_len)
 {
-  int read_len = 0;
   int i = 0;
   char temp[8] = {0};
   unsigned char decrypt[16] = {0};
   MD5_CTX md5c;
 
-  read_len = strlen(src);
-
   MD5Init(&md5c);
-  MD5Update(&md5c, (unsigned char *)src, read_len);
+  MD5Update(&md5c, (unsigned char *)src, src_len);
   MD5Final(&md5c, decrypt);
 
-  for (i = 0; i < 16; i++)
+  if (NULL != dest)
   {
-    sprintf(temp, "%02x", decrypt[i]);
-    if (NULL != dest)
+    for (i = 0; i < 16; i++)
     {
+      sprintf(temp, "%02x", decrypt[i]);
       strcat((char *)dest, temp);
     }
   }
   // printf("md5:%s\n", dest);
 
-  return read_len;
+  return strlen(decrypt);
 }
 
 int calc_md5_f(const char *filename,
@@ -106,10 +103,11 @@ int calc_md5_f(const char *filename,
 {
   int i = 0;
   size_t filelen = 0;
-  size_t read_len = 0;
   char temp[8] = {0};
   unsigned char *buf = NULL;
   buf = (unsigned char *)malloc(sizeof(unsigned char) * bf_size);
+  if (NULL == buf)
+    return -1;
   unsigned char decrypt[16] = {0};
   MD5_CTX md5;
   size_t lfsize = 0;
@@ -128,7 +126,7 @@ int calc_md5_f(const char *filename,
   }
 
   lfsize = f_size(fdf);
-  if (lfsize <= 0)
+  if (lfsize == 0)
   {
     printf("Failed to count file size!\n");
     fclose(fdf);
@@ -145,18 +143,19 @@ int calc_md5_f(const char *filename,
   MD5Init(&md5);
   while (1)
   {
+    size_t read_len = 0;
     memset(buf, 0, sizeof(unsigned char) * bf_size);
     read_len = fread(buf, sizeof(unsigned char), sizeof(unsigned char) * bf_size, fdf);
-    if (read_len < 0)
-    {
-      fclose(fdf);
-      if (NULL != buf)
-      {
-        free(buf);
-        buf = NULL;
-      }
-      return -1;
-    }
+    // if (read_len < 0)
+    // {
+    //   fclose(fdf);
+    //   if (NULL != buf)
+    //   {
+    //     free(buf);
+    //     buf = NULL;
+    //   }
+    //   return -1;
+    // }
     if (read_len == 0)
       break;
 
@@ -245,7 +244,7 @@ gtb_chg_callback(GtkWidget *widget, gpointer data)
 
   g_print("text view(send):%s\n", text);
 
-  if (NULL != g_text && strlen(text) < (1024 * 4))
+  if (strlen(text) < (1024 * 4))
   {
     memset(g_text, 0, sizeof(g_text));
     memcpy(g_text, (gchar *)text, strlen(text) * sizeof(gchar));
@@ -282,7 +281,7 @@ calc_md5(GtkWidget *widget,
   else
   {
     gtk_widget_set_visible(progress_bar, FALSE);
-    calc_md5_s(g_text, szDest);
+    calc_md5_s(g_text, strlen(g_text), szDest, 32);
     if (NULL != data)
     {
       gchar szMarkup[128] = "\0";

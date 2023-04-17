@@ -58,41 +58,39 @@ size_t f_size(FILE *fp)
     return n;
 }
 
-int calc_md5_s(const char *src, char *dest)
+int calc_md5_s(const char *src, unsigned int src_len, char *dest, unsigned int dst_len)
 {
-    int read_len = 0;
     int i = 0;
     char temp[8] = {0};
     unsigned char decrypt[16] = {0};
     MD5_CTX md5c;
 
-    read_len = strlen(src);
-
     MD5Init(&md5c);
-    MD5Update(&md5c, (unsigned char *)src, read_len);
+    MD5Update(&md5c, (unsigned char *)src, src_len);
     MD5Final(&md5c, decrypt);
 
-    for (i = 0; i < 16; i++)
+    if (NULL != dest)
     {
-        sprintf(temp, "%02x", decrypt[i]);
-        if (NULL != dest)
+        for (i = 0; i < 16; i++)
         {
+            sprintf(temp, "%02x", decrypt[i]);
             strcat((char *)dest, temp);
         }
     }
-    //printf("md5:%s\n", dest);
+    // printf("md5:%s\n", dest);
 
-    return read_len;
+    return strlen(decrypt);
 }
 
 int calc_md5_f(const char *filename, size_t bf_size, char *dest)
 {
     int i = 0;
     size_t filelen = 0;
-    size_t read_len = 0;
     char temp[8] = {0};
     unsigned char *buf = NULL;
-    buf = (unsigned char*)malloc(sizeof(unsigned char) * bf_size);
+    buf = (unsigned char *)malloc(sizeof(unsigned char) * bf_size);
+    if (NULL == buf)
+        return -1;
     unsigned char decrypt[16] = {0};
     MD5_CTX md5;
     size_t lfsize = 0;
@@ -111,7 +109,7 @@ int calc_md5_f(const char *filename, size_t bf_size, char *dest)
     }
 
     lfsize = f_size(fdf);
-    if (lfsize <= 0)
+    if (lfsize == 0)
     {
         printf("Failed to count file size!\n");
         fclose(fdf);
@@ -128,18 +126,19 @@ int calc_md5_f(const char *filename, size_t bf_size, char *dest)
     MD5Init(&md5);
     while (1)
     {
+        size_t read_len = 0;
         memset(buf, 0, sizeof(unsigned char) * bf_size);
         read_len = fread(buf, sizeof(unsigned char), sizeof(unsigned char) * bf_size, fdf);
-        if (read_len < 0)
-        {
-            fclose(fdf);
-            if (NULL != buf)
-            {
-                free(buf);
-                buf = NULL;
-            }
-            return -1;
-        }
+        // if (read_len < 0)
+        // {
+        //     fclose(fdf);
+        //     if (NULL != buf)
+        //     {
+        //         free(buf);
+        //         buf = NULL;
+        //     }
+        //     return -1;
+        // }
         if (read_len == 0)
             break;
 
@@ -182,10 +181,10 @@ int main(int argc, char *argv[])
         memset(szDest, 0, sizeof(szDest));
         if (0 == strcmp(argv[1], "-s"))
         {
-            iLen = calc_md5_s(argv[2], szDest);
+            iLen = calc_md5_s(argv[2], strlen(argv[2]), szDest, 32);
             if (strlen(szDest) > 0 && iLen > 0)
                 printf("md5: %s\n", szDest);
-            else if (strlen(szDest) <= 0)
+            else if (strlen(szDest) == 0)
                 printf("internal error!\n");
         }
         else if (0 == strcmp(argv[1], "-f"))
@@ -193,7 +192,7 @@ int main(int argc, char *argv[])
             iLen = calc_md5_f(argv[2], MAX_BUF_LEN, szDest);
             if (strlen(szDest) > 0 && iLen > 0)
                 printf("md5: %s\n", szDest);
-            else if (strlen(szDest) <= 0)
+            else if (strlen(szDest) == 0)
                 printf("internal error!\n");
         }
         else
